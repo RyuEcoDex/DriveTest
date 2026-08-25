@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>運転免許学科試験</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--ink:#202124;--muted:#6b7280;--line:#d9dde3;--red:#c62828;--red2:#ffebee;--green:#188038;--green2:#e6f4ea;--blue:#1a73e8;--amber:#f9ab00}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:var(--ink);background:var(--bg)}
+button{font:inherit;cursor:pointer}.app{max-width:860px;margin:auto;min-height:100vh;background:var(--bg)}.screen{display:none;padding:16px}.screen.active{display:block}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.97);border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.title{font-weight:800;font-size:18px}.small{font-size:13px;color:var(--muted)}.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.035)}
+.hero{padding:28px 20px;text-align:center}.hero h1{margin:0 0 8px;font-size:26px}.hero p{margin:0;color:var(--muted)}
+.menu{display:grid;gap:12px}.menu button,.exam-grid button{border:1px solid var(--line);background:#fff;border-radius:16px;padding:18px;font-weight:800;font-size:18px}
+.menu button:active,.exam-grid button:active{transform:scale(.99)}.exam-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.disabled{opacity:.45}
+.btn{border:0;border-radius:12px;padding:13px 16px;font-weight:800}.btn.primary{background:#111827;color:#fff}.btn.secondary{background:#e5e7eb;color:#111827}.btn.danger{background:var(--red);color:#fff}.btn.full{width:100%}
+.row{display:flex;gap:10px}.row>*{flex:1}.question-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.qcount{font-weight:800}.timer{font-weight:900;font-variant-numeric:tabular-nums}
+.question{font-size:20px;line-height:1.8;margin:18px 0}.choices{display:grid;grid-template-columns:1fr 1fr;gap:12px}.choice{font-size:34px;font-weight:900;padding:16px;border:2px solid var(--line);border-radius:16px;background:#fff}.choice.selected{border-color:var(--red);background:var(--red2)}
+.figure-wrap{margin:12px 0;text-align:center}.figure-wrap img{max-width:100%;max-height:420px;object-fit:contain;border:1px solid var(--line);border-radius:12px;background:white}.figure-note{font-size:13px;color:var(--muted);margin:5px 0}
+.answer-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:5px;margin:16px 0}.answer-grid button{aspect-ratio:1;border:1px solid var(--line);border-radius:7px;background:#fff;font-size:11px;padding:0}.answer-grid button.answered{background:#ef5350;color:#fff;border-color:#ef5350}.answer-grid button.current{outline:3px solid #111827}
+.feedback{border-radius:14px;padding:14px;margin-top:14px;line-height:1.65}.feedback.ok{background:var(--green2);border:1px solid #a8dab5}.feedback.ng{background:var(--red2);border:1px solid #f1aeb5}
+.kv{display:grid;grid-template-columns:100px 1fr;gap:8px 12px;margin:10px 0}.kv b{color:#4b5563}.score{font-size:42px;font-weight:900;text-align:center}.pass{color:var(--green)}.fail{color:var(--red)}
+.history-item{padding:12px 0;border-bottom:1px solid var(--line)}.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:none;align-items:center;justify-content:center;padding:20px}.modal-backdrop.show{display:flex}.modal{width:min(420px,100%);background:#fff;border-radius:18px;padding:20px}.modal h3{margin-top:0}
+.notice{background:#fff8e1;border:1px solid #ffe082;border-radius:12px;padding:12px;line-height:1.6}.badge{display:inline-block;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:800;background:#eef2ff}
+@media(min-width:700px){.screen{padding:24px}.exam-grid{grid-template-columns:repeat(3,1fr)}.question{font-size:22px}.answer-grid{grid-template-columns:repeat(20,1fr)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div><div class="title" id="topTitle">運転免許学科試験</div><div class="small" id="topSub">Webアプリ V1</div></div>
+    <button class="btn danger" id="globalEnd" style="display:none">終了</button>
+  </div>
+
+  <section id="home" class="screen active">
+    <div class="card hero"><h1>運転免許学科試験</h1><p>試験・練習・ランダム問題</p></div>
+    <div class="menu">
+      <button onclick="chooseMode('exam')">試験</button>
+      <button onclick="chooseMode('practice')">練習</button>
+      <button onclick="startRandom()">ランダム問題</button>
+      <button onclick="showHistory()">成績履歴</button>
+    </div>
+    <div class="notice" style="margin-top:14px">V1では第1号100問を実データとして搭載しています。第2〜6号は次のデータ化工程で追加します。</div>
+  </section>
+
+  <section id="examSelect" class="screen">
+    <div class="card"><h2 id="selectHeading">試験番号を選択</h2><div class="exam-grid" id="examButtons"></div></div>
+    <button class="btn secondary full" onclick="goHome()">戻る</button>
+  </section>
+
+  <section id="confirm" class="screen">
+    <div class="card">
+      <h2 id="confirmTitle"></h2>
+      <div class="kv"><b>問題数</b><span>100問</span><b>制限時間</b><span id="confirmTime">50分</span><b>合格ライン</b><span id="confirmPass">90点以上</span><b>出題順</b><span>毎回ランダム</span></div>
+    </div>
+    <div class="row"><button class="btn secondary" onclick="showScreen('examSelect')">戻る</button><button class="btn primary" onclick="beginSelected()">開始</button></div>
+  </section>
+
+  <section id="questionScreen" class="screen">
+    <div class="card">
+      <div class="question-head"><span class="qcount" id="qCount"></span><span class="timer" id="timer"></span></div>
+      <div class="small" id="sourceNo"></div>
+      <div class="question" id="qText"></div>
+      <div id="figureArea"></div>
+      <div class="choices"><button class="choice" id="choiceO" onclick="selectChoice(true)">○</button><button class="choice" id="choiceX" onclick="selectChoice(false)">×</button></div>
+      <div id="feedbackArea"></div>
+      <div class="answer-grid" id="answerGrid"></div>
+      <div class="row"><button class="btn secondary" id="prevBtn" onclick="prevQuestion()">前へ</button><button class="btn primary" id="nextBtn" onclick="nextQuestion()">次へ</button></div>
+    </div>
+  </section>
+
+  <section id="result" class="screen">
+    <div class="card"><div id="resultBody"></div></div>
+    <div class="menu"><button onclick="reviewWrong()">間違った問題</button><button onclick="finishToSelect()">終了</button></div>
+  </section>
+
+  <section id="review" class="screen">
+    <div class="card" id="reviewBody"></div>
+    <div class="row"><button class="btn secondary" id="reviewPrev" onclick="reviewStep(-1)">前へ</button><button class="btn primary" id="reviewNext" onclick="reviewStep(1)">次へ</button></div>
+    <button class="btn secondary full" style="margin-top:10px" onclick="showScreen('result')">結果へ戻る</button>
+  </section>
+
+  <section id="history" class="screen">
+    <div class="card"><h2>成績履歴</h2><div id="historyList"></div></div>
+    <button class="btn secondary full" onclick="goHome()">TOPへ戻る</button>
+  </section>
+</div>
+
+<div class="modal-backdrop" id="modal"><div class="modal"><h3 id="modalTitle"></h3><div id="modalText"></div><div class="row" style="margin-top:16px"><button class="btn secondary" onclick="closeModal()">キャンセル</button><button class="btn danger" id="modalOk">終了</button></div></div></div>
+
+<script src="data.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const STORAGE='license_exam_state_v1', HISTORY='license_exam_history_v1';
+let state={mode:null,exam:null,items:[],index:0,answers:{},draft:null,remaining:3000,running:false,reviewIndex:0,result:null};
+let timerId=null,lastTick=null,selectedExam=1;
+
+function showScreen(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));$(id).classList.add('active');$('globalEnd').style.display=id==='questionScreen'?'block':'none'}
+function goHome(){stopTimer();clearState();$('topTitle').textContent='運転免許学科試験';$('topSub').textContent='Webアプリ V1';showScreen('home')}
+function chooseMode(mode){state.mode=mode;$('selectHeading').textContent=mode==='exam'?'試験番号を選択':'練習番号を選択';renderExamButtons();showScreen('examSelect')}
+function renderExamButtons(){const box=$('examButtons');box.innerHTML='';for(let i=1;i<=6;i++){const b=document.createElement('button');b.textContent=`第${i}号`;if(!window.EXAM_DATA[String(i)]){b.classList.add('disabled');b.innerHTML+=`<div class="small">データ準備中</div>`;b.onclick=()=>alert(`第${i}号は次のデータ化工程で追加します。`)}else b.onclick=()=>prepareExam(i);box.appendChild(b)}}
+function prepareExam(n){selectedExam=n;$('confirmTitle').textContent=`第${n}号 ${state.mode==='exam'?'試験':'練習'}`;$('confirmTime').textContent=state.mode==='exam'?'50分':'なし';$('confirmPass').textContent=state.mode==='exam'?'90点以上':'採点あり';showScreen('confirm')}
+function shuffled(a){let b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b}
+function beginSelected(){const raw=window.EXAM_DATA[String(selectedExam)];state.exam=selectedExam;state.items=shuffled(raw);state.index=0;state.answers={};state.draft=null;state.remaining=3000;state.result=null;state.running=state.mode==='exam';saveState();startTimer();renderQuestion();showScreen('questionScreen')}
+function startRandom(){const all=Object.values(window.EXAM_DATA).flat();if(!all.length)return;state.mode='random';state.exam=null;state.items=shuffled(all).slice(0,50);state.index=0;state.answers={};state.draft=null;state.remaining=0;state.running=false;state.result=null;saveState();renderQuestion();showScreen('questionScreen')}
+function current(){return state.items[state.index]}
+function selectChoice(v){const q=current();if(state.mode!=='exam' && state.answers[q.id]!==undefined)return;state.draft=v;markChoices();if(state.mode==='practice'){state.answers[q.id]=v;state.draft=null;saveState();renderQuestion()}else if(state.mode==='random'){$('nextBtn').textContent='回答確認';markChoices()}}
+function markChoices(){const q=current(), v=state.draft!==null?state.draft:state.answers[q.id];$('choiceO').classList.toggle('selected',v===true);$('choiceX').classList.toggle('selected',v===false)}
+function commitDraft(){const q=current();if(state.draft!==null){state.answers[q.id]=state.draft;state.draft=null}}
+function nextQuestion(){
+ const q=current();
+ if(state.mode==='random' && state.answers[q.id]===undefined){
+   if(state.draft===null){alert('○または×を選択してください。');return}
+   state.answers[q.id]=state.draft;state.draft=null;saveState();renderQuestion();return;
+ }
+ if(state.mode==='exam')commitDraft();
+ if(state.index===state.items.length-1){
+   if(state.mode==='random'){clearState();goHome();return}
+   finishExam();
+   return;
+ }
+ state.index++;state.draft=null;saveState();renderQuestion()
+}
+function prevQuestion(){if(state.index<=0)return;if(state.mode==='exam')commitDraft();state.index--;state.draft=null;saveState();renderQuestion()}
+function renderQuestion(){
+ const q=current();if(!q)return;
+ $('topTitle').textContent=state.mode==='exam'?`第${state.exam}号 試験`:state.mode==='practice'?`第${state.exam}号 練習`:'ランダム問題';
+ $('topSub').textContent=state.mode==='exam'?'100問・50分':state.mode==='practice'?'100問':'50問';
+ $('qCount').textContent=`第${state.index+1}問 / ${state.items.length}`;
+ $('sourceNo').textContent=`元資料：第${q.exam}号 問${q.originalNumber}`;
+ $('qText').textContent=q.question;
+ $('timer').textContent=state.mode==='exam'?fmt(state.remaining):'';
+ $('prevBtn').style.visibility=(state.index===0 || state.mode==='random')?'hidden':'visible';
+ const answered=state.answers[q.id]!==undefined;
+ $('nextBtn').textContent=state.index===state.items.length-1?(state.mode==='random'?(answered?'終了':'回答確認'):(state.mode==='exam'?'採点する':'終了')):(state.mode==='random'?(answered?'次へ':'回答確認'):'次へ');
+ $('choiceO').disabled=(state.mode!=='exam' && answered);$('choiceX').disabled=(state.mode!=='exam' && answered);
+ markChoices();renderFigure(q);renderFeedback(q);renderGrid();saveState();
+}
+function renderFigure(q){
+ const a=$('figureArea');a.innerHTML='';if(!q.figure)return;
+ a.innerHTML=`<div class="figure-note">参照：${q.figure}図　※V1は元ページ画像を表示。個別図切り出しは次工程。</div><div class="figure-wrap"><img src="${q.figureImage}" alt="${q.figure}図を含む元資料" onclick="this.requestFullscreen?.()"></div>`;
+}
+function renderFeedback(q){
+ const a=$('feedbackArea');a.innerHTML='';
+ if(state.mode==='exam')return;
+ if(state.answers[q.id]===undefined)return;
+ const mine=state.answers[q.id], ok=mine===q.answer;
+ a.innerHTML=`<div class="feedback ${ok?'ok':'ng'}"><b>${ok?'正解':'不正解'}</b><div class="kv"><b>自分の回答</b><span>${mine?'○':'×'}</span><b>正解</b><span>${q.answer?'○':'×'}</span><b>資料解説</b><span>${escapeHtml(q.sourceExplanation||'設問通り')}</span><b>AI補足</b><span>未生成</span><b>覚え方</b><span>未生成</span></div></div>`;
+}
+function renderGrid(){const a=$('answerGrid');a.innerHTML='';state.items.forEach((q,i)=>{const b=document.createElement('button');b.textContent=i+1;if(state.answers[q.id]!==undefined)b.classList.add('answered');if(i===state.index)b.classList.add('current');b.onclick=()=>{if(state.mode==='random')return;if(state.mode==='exam')commitDraft();state.index=i;state.draft=null;renderQuestion()};a.appendChild(b)})}
+function startTimer(){stopTimer();if(state.mode!=='exam')return;state.running=true;lastTick=Date.now();timerId=setInterval(()=>{if(document.hidden){lastTick=Date.now();return}const now=Date.now(),d=Math.floor((now-lastTick)/1000);if(d>0){state.remaining=Math.max(0,state.remaining-d);lastTick=now;$('timer').textContent=fmt(state.remaining);saveState();if(state.remaining<=0){stopTimer();timeUp()}}},500)}
+function stopTimer(){if(timerId)clearInterval(timerId);timerId=null;state.running=false}
+document.addEventListener('visibilitychange',()=>{lastTick=Date.now();saveState()});
+function fmt(s){return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}
+function timeUp(){commitDraft();alert('制限時間になりました。結果画面へ移動します。');finishExam()}
+function finishExam(){commitDraft();stopTimer();const total=state.items.length;let correct=0,wrong=0,unanswered=0;for(const q of state.items){if(state.answers[q.id]===undefined)unanswered++;else if(state.answers[q.id]===q.answer)correct++;else wrong++}state.result={correct,wrong,unanswered,total,score:correct,pass:correct>=90};saveHistory();saveState();renderResult();showScreen('result')}
+function renderResult(){const r=state.result;$('resultBody').innerHTML=`<div class="score ${r.pass?'pass':'fail'}">${r.score} / ${r.total}</div><h2 style="text-align:center">${r.pass?'合格':'不合格'}</h2><div class="kv"><b>正解</b><span>${r.correct}問</span><b>不正解</b><span>${r.wrong}問</span><b>未回答</b><span>${r.unanswered}問</span></div>`}
+function reviewWrong(){const arr=state.items.filter(q=>state.answers[q.id]!==undefined && state.answers[q.id]!==q.answer);if(!arr.length){alert('間違った問題はありません。');return}state.reviewItems=arr;state.reviewIndex=0;renderReview();showScreen('review')}
+function renderReview(){const q=state.reviewItems[state.reviewIndex], mine=state.answers[q.id];$('reviewBody').innerHTML=`<div class="small">${state.reviewIndex+1} / ${state.reviewItems.length}　元資料：第${q.exam}号 問${q.originalNumber}</div><div class="question">${escapeHtml(q.question)}</div>${q.figure?`<div class="figure-wrap"><img src="${q.figureImage}" alt="${q.figure}図を含む元資料"></div>`:''}<div class="kv"><b>自分の回答</b><span>${mine?'○':'×'}</span><b>正解</b><span>${q.answer?'○':'×'}</span><b>資料解説</b><span>${escapeHtml(q.sourceExplanation||'設問通り')}</span><b>AI補足</b><span>未生成</span><b>覚え方</b><span>未生成</span></div>`;$('reviewPrev').style.visibility=state.reviewIndex===0?'hidden':'visible';$('reviewNext').textContent=state.reviewIndex===state.reviewItems.length-1?'終了':'次へ'}
+function reviewStep(d){if(d>0&&state.reviewIndex===state.reviewItems.length-1){showScreen('result');return}state.reviewIndex=Math.max(0,Math.min(state.reviewItems.length-1,state.reviewIndex+d));renderReview()}
+function finishToSelect(){clearState();state.mode='exam';renderExamButtons();showScreen('examSelect')}
+function saveHistory(){if(!state.result)return;const h=JSON.parse(localStorage.getItem(HISTORY)||'[]');h.unshift({date:new Date().toLocaleString('ja-JP'),exam:state.exam,score:state.result.score,pass:state.result.pass,correct:state.result.correct,wrong:state.result.wrong,unanswered:state.result.unanswered});localStorage.setItem(HISTORY,JSON.stringify(h.slice(0,100)))}
+function showHistory(){const h=JSON.parse(localStorage.getItem(HISTORY)||'[]');$('historyList').innerHTML=h.length?h.map(x=>`<div class="history-item"><b>第${x.exam}号　${x.score}点　<span class="${x.pass?'pass':'fail'}">${x.pass?'合格':'不合格'}</span></b><div class="small">${x.date}　正解${x.correct} / 不正解${x.wrong} / 未回答${x.unanswered}</div></div>`).join(''):'<div class="small">まだ成績履歴はありません。</div>';showScreen('history')}
+function saveState(){localStorage.setItem(STORAGE,JSON.stringify(state))}
+function clearState(){localStorage.removeItem(STORAGE);state={mode:null,exam:null,items:[],index:0,answers:{},draft:null,remaining:3000,running:false,reviewIndex:0,result:null}}
+function restore(){try{const s=JSON.parse(localStorage.getItem(STORAGE)||'null');if(s&&s.items&&s.items.length){state=s;if(state.result){renderResult();showScreen('result')}else{renderQuestion();showScreen('questionScreen');if(state.mode==='exam')startTimer()}}}catch(e){}}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+$('globalEnd').onclick=()=>{const answered=Object.keys(state.answers).length+(state.draft!==null&&state.answers[current().id]===undefined?1:0),unanswered=state.items.length-answered;$('modalTitle').textContent=state.mode==='exam'?'試験を終了しますか？':'終了しますか？';$('modalText').innerHTML=`回答済み：${answered}問<br>未回答：${unanswered}問`;$('modal').classList.add('show');$('modalOk').onclick=()=>{closeModal();if(state.mode==='random'){goHome()}else finishExam()}}
+function closeModal(){$('modal').classList.remove('show')}
+restore();
+</script>
+</body>
+</html>
