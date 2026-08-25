@@ -22,7 +22,7 @@ button{font:inherit;cursor:pointer}.app{max-width:860px;margin:auto;min-height:1
 .feedback{border-radius:14px;padding:14px;margin-top:14px;line-height:1.65}.feedback.ok{background:var(--green2);border:1px solid #a8dab5}.feedback.ng{background:var(--red2);border:1px solid #f1aeb5}
 .kv{display:grid;grid-template-columns:100px 1fr;gap:8px 12px;margin:10px 0}.kv b{color:#4b5563}.score{font-size:42px;font-weight:900;text-align:center}.pass{color:var(--green)}.fail{color:var(--red)}
 .history-item{padding:12px 0;border-bottom:1px solid var(--line)}.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:none;align-items:center;justify-content:center;padding:20px}.modal-backdrop.show{display:flex}.modal{width:min(420px,100%);background:#fff;border-radius:18px;padding:20px}.modal h3{margin-top:0}
-.notice{background:#fff8e1;border:1px solid #ffe082;border-radius:12px;padding:12px;line-height:1.6}.badge{display:inline-block;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:800;background:#eef2ff}
+.notice{background:#fff8e1;border:1px solid #ffe082;border-radius:12px;padding:12px;line-height:1.6}.ai-actions{margin-top:12px}.ai-actions button{width:100%;padding:11px;border:0;border-radius:10px;background:#eef2ff;font-weight:800}.ai-box{margin-top:10px;padding:12px;border-radius:12px;background:#f8fafc;border:1px solid var(--line)}.badge{display:inline-block;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:800;background:#eef2ff}
 @media(min-width:700px){.screen{padding:24px}.exam-grid{grid-template-columns:repeat(3,1fr)}.question{font-size:22px}.answer-grid{grid-template-columns:repeat(20,1fr)}}
 </style>
 </head>
@@ -40,6 +40,7 @@ button{font:inherit;cursor:pointer}.app{max-width:860px;margin:auto;min-height:1
       <button onclick="chooseMode('practice')">練習</button>
       <button onclick="startRandom()">ランダム問題</button>
       <button onclick="showHistory()">成績履歴</button>
+      <button onclick="showAISettings()">AI設定</button>
     </div>
     <div class="notice" style="margin-top:14px">V1では第1号100問を実データとして搭載しています。第2〜6号は次のデータ化工程で追加します。</div>
   </section>
@@ -85,6 +86,26 @@ button{font:inherit;cursor:pointer}.app{max-width:860px;margin:auto;min-height:1
     <div class="card"><h2>成績履歴</h2><div id="historyList"></div></div>
     <button class="btn secondary full" onclick="goHome()">TOPへ戻る</button>
   </section>
+
+  <section id="aiSettings" class="screen">
+    <div class="card">
+      <h2>AI設定（Gemini）</h2>
+      <p class="small">APIキーはGitHubには保存せず、この端末のlocalStorageにのみ保存します。</p>
+
+      <label><b>Gemini APIキー</b></label>
+      <textarea id="aiKeys" rows="5" style="width:100%;margin:8px 0 14px;padding:12px;border:1px solid var(--line);border-radius:10px" placeholder="1行に1つAPIキーを入力"></textarea>
+
+      <label><b>使用モデル</b></label>
+      <textarea id="aiModels" rows="4" style="width:100%;margin:8px 0 14px;padding:12px;border:1px solid var(--line);border-radius:10px" placeholder="gemini-3.6-flash&#10;gemini-3.5-flash-lite"></textarea>
+
+      <div class="row">
+        <button class="btn secondary" onclick="testGemini()">接続テスト</button>
+        <button class="btn primary" onclick="saveAISettings()">保存</button>
+      </div>
+      <div id="aiStatus" class="small" style="margin-top:12px"></div>
+    </div>
+    <button class="btn secondary full" onclick="goHome()">TOPへ戻る</button>
+  </section>
 </div>
 
 <div class="modal-backdrop" id="modal"><div class="modal"><h3 id="modalTitle"></h3><div id="modalText"></div><div class="row" style="margin-top:16px"><button class="btn secondary" onclick="closeModal()">キャンセル</button><button class="btn danger" id="modalOk">終了</button></div></div></div>
@@ -92,7 +113,7 @@ button{font:inherit;cursor:pointer}.app{max-width:860px;margin:auto;min-height:1
 <script src="data.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-const STORAGE='license_exam_state_v1', HISTORY='license_exam_history_v1';
+const STORAGE='license_exam_state_v1', HISTORY='license_exam_history_v1', AI_SETTINGS='license_exam_ai_settings_v1', AI_CACHE='license_exam_ai_cache_v1';
 let state={mode:null,exam:null,items:[],index:0,answers:{},draft:null,remaining:3000,running:false,reviewIndex:0,result:null};
 let timerId=null,lastTick=null,selectedExam=1;
 
@@ -146,7 +167,11 @@ function renderFeedback(q){
  if(state.mode==='exam')return;
  if(state.answers[q.id]===undefined)return;
  const mine=state.answers[q.id], ok=mine===q.answer;
- a.innerHTML=`<div class="feedback ${ok?'ok':'ng'}"><b>${ok?'正解':'不正解'}</b><div class="kv"><b>自分の回答</b><span>${mine?'○':'×'}</span><b>正解</b><span>${q.answer?'○':'×'}</span><b>資料解説</b><span>${escapeHtml(q.sourceExplanation||'設問通り')}</span><b>AI補足</b><span>未生成</span><b>覚え方</b><span>未生成</span></div></div>`;
+ const cache=getAICache()[q.id];
+ const aiHtml=cache
+   ? `<div class="ai-box"><b>AI補足</b><div>${escapeHtml(cache.supplement)}</div><br><b>覚え方</b><div>${escapeHtml(cache.memoryTip)}</div><div class="small" style="margin-top:8px">使用モデル：${escapeHtml(cache.model||'')}</div></div>`
+   : `<div class="ai-actions"><button onclick="generateAIForCurrent()">AI補足・覚え方を生成</button></div>`;
+ a.innerHTML=`<div class="feedback ${ok?'ok':'ng'}"><b>${ok?'正解':'不正解'}</b><div class="kv"><b>自分の回答</b><span>${mine?'○':'×'}</span><b>正解</b><span>${q.answer?'○':'×'}</span><b>資料解説</b><span>${escapeHtml(q.sourceExplanation||'設問通り')}</span></div>${aiHtml}</div>`;
 }
 function renderGrid(){const a=$('answerGrid');a.innerHTML='';state.items.forEach((q,i)=>{const b=document.createElement('button');b.textContent=i+1;if(state.answers[q.id]!==undefined)b.classList.add('answered');if(i===state.index)b.classList.add('current');b.onclick=()=>{if(state.mode==='random')return;if(state.mode==='exam')commitDraft();state.index=i;state.draft=null;renderQuestion()};a.appendChild(b)})}
 function startTimer(){stopTimer();if(state.mode!=='exam')return;state.running=true;lastTick=Date.now();timerId=setInterval(()=>{if(document.hidden){lastTick=Date.now();return}const now=Date.now(),d=Math.floor((now-lastTick)/1000);if(d>0){state.remaining=Math.max(0,state.remaining-d);lastTick=now;$('timer').textContent=fmt(state.remaining);saveState();if(state.remaining<=0){stopTimer();timeUp()}}},500)}
@@ -157,7 +182,15 @@ function timeUp(){commitDraft();alert('制限時間になりました。結果�
 function finishExam(){commitDraft();stopTimer();const total=state.items.length;let correct=0,wrong=0,unanswered=0;for(const q of state.items){if(state.answers[q.id]===undefined)unanswered++;else if(state.answers[q.id]===q.answer)correct++;else wrong++}state.result={correct,wrong,unanswered,total,score:correct,pass:correct>=90};saveHistory();saveState();renderResult();showScreen('result')}
 function renderResult(){const r=state.result;$('resultBody').innerHTML=`<div class="score ${r.pass?'pass':'fail'}">${r.score} / ${r.total}</div><h2 style="text-align:center">${r.pass?'合格':'不合格'}</h2><div class="kv"><b>正解</b><span>${r.correct}問</span><b>不正解</b><span>${r.wrong}問</span><b>未回答</b><span>${r.unanswered}問</span></div>`}
 function reviewWrong(){const arr=state.items.filter(q=>state.answers[q.id]!==undefined && state.answers[q.id]!==q.answer);if(!arr.length){alert('間違った問題はありません。');return}state.reviewItems=arr;state.reviewIndex=0;renderReview();showScreen('review')}
-function renderReview(){const q=state.reviewItems[state.reviewIndex], mine=state.answers[q.id];$('reviewBody').innerHTML=`<div class="small">${state.reviewIndex+1} / ${state.reviewItems.length}　元資料：第${q.exam}号 問${q.originalNumber}</div><div class="question">${escapeHtml(q.question)}</div>${q.figure?`<div class="figure-wrap"><img src="${q.figureImage}" alt="${q.figure}図を含む元資料"></div>`:''}<div class="kv"><b>自分の回答</b><span>${mine?'○':'×'}</span><b>正解</b><span>${q.answer?'○':'×'}</span><b>資料解説</b><span>${escapeHtml(q.sourceExplanation||'設問通り')}</span><b>AI補足</b><span>未生成</span><b>覚え方</b><span>未生成</span></div>`;$('reviewPrev').style.visibility=state.reviewIndex===0?'hidden':'visible';$('reviewNext').textContent=state.reviewIndex===state.reviewItems.length-1?'終了':'次へ'}
+function renderReview(){
+ const q=state.reviewItems[state.reviewIndex], mine=state.answers[q.id], cache=getAICache()[q.id];
+ const aiHtml=cache
+   ? `<div class="ai-box"><b>AI補足</b><div>${escapeHtml(cache.supplement)}</div><br><b>覚え方</b><div>${escapeHtml(cache.memoryTip)}</div><div class="small" style="margin-top:8px">使用モデル：${escapeHtml(cache.model||'')}</div></div>`
+   : `<div class="ai-actions"><button onclick="generateAIForQuestion('${q.id}', true)">AI補足・覚え方を生成</button></div>`;
+ $('reviewBody').innerHTML=`<div class="small">${state.reviewIndex+1} / ${state.reviewItems.length}　元資料：第${q.exam}号 問${q.originalNumber}</div><div class="question">${escapeHtml(q.question)}</div>${q.figure?`<div class="figure-wrap"><img src="${q.figureImage}" alt="${q.figure}図を含む元資料"></div>`:''}<div class="kv"><b>自分の回答</b><span>${mine?'○':'×'}</span><b>正解</b><span>${q.answer?'○':'×'}</span><b>資料解説</b><span>${escapeHtml(q.sourceExplanation||'設問通り')}</span></div>${aiHtml}`;
+ $('reviewPrev').style.visibility=state.reviewIndex===0?'hidden':'visible';
+ $('reviewNext').textContent=state.reviewIndex===state.reviewItems.length-1?'終了':'次へ';
+}
 function reviewStep(d){if(d>0&&state.reviewIndex===state.reviewItems.length-1){showScreen('result');return}state.reviewIndex=Math.max(0,Math.min(state.reviewItems.length-1,state.reviewIndex+d));renderReview()}
 function finishToSelect(){clearState();state.mode='exam';renderExamButtons();showScreen('examSelect')}
 function saveHistory(){if(!state.result)return;const h=JSON.parse(localStorage.getItem(HISTORY)||'[]');h.unshift({date:new Date().toLocaleString('ja-JP'),exam:state.exam,score:state.result.score,pass:state.result.pass,correct:state.result.correct,wrong:state.result.wrong,unanswered:state.result.unanswered});localStorage.setItem(HISTORY,JSON.stringify(h.slice(0,100)))}
@@ -165,6 +198,96 @@ function showHistory(){const h=JSON.parse(localStorage.getItem(HISTORY)||'[]');$
 function saveState(){localStorage.setItem(STORAGE,JSON.stringify(state))}
 function clearState(){localStorage.removeItem(STORAGE);state={mode:null,exam:null,items:[],index:0,answers:{},draft:null,remaining:3000,running:false,reviewIndex:0,result:null}}
 function restore(){try{const s=JSON.parse(localStorage.getItem(STORAGE)||'null');if(s&&s.items&&s.items.length){state=s;if(state.result){renderResult();showScreen('result')}else{renderQuestion();showScreen('questionScreen');if(state.mode==='exam')startTimer()}}}catch(e){}}
+
+function getAISettings(){
+ try{
+   const s=JSON.parse(localStorage.getItem(AI_SETTINGS)||'null');
+   return s||{keys:[],models:['gemini-3.6-flash','gemini-3.5-flash-lite']};
+ }catch(e){return {keys:[],models:['gemini-3.6-flash','gemini-3.5-flash-lite']}}
+}
+function getAICache(){try{return JSON.parse(localStorage.getItem(AI_CACHE)||'{}')}catch(e){return {}}}
+function saveAICache(c){localStorage.setItem(AI_CACHE,JSON.stringify(c))}
+function showAISettings(){
+ const s=getAISettings();
+ $('aiKeys').value=(s.keys||[]).join('\n');
+ $('aiModels').value=(s.models||['gemini-3.6-flash','gemini-3.5-flash-lite']).join('\n');
+ $('aiStatus').textContent='';
+ showScreen('aiSettings');
+}
+function saveAISettings(){
+ const keys=$('aiKeys').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ const models=$('aiModels').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ localStorage.setItem(AI_SETTINGS,JSON.stringify({keys,models:models.length?models:['gemini-3.6-flash']}));
+ $('aiStatus').textContent='保存しました。この端末内にのみ保存されています。';
+}
+async function testGemini(){
+ saveAISettings();
+ $('aiStatus').textContent='接続テスト中…';
+ try{
+   const r=await callGemini('「接続成功」とだけ返してください。');
+   $('aiStatus').textContent='接続成功：'+r.model;
+ }catch(e){
+   $('aiStatus').textContent='接続失敗：'+e.message;
+ }
+}
+async function callGemini(prompt){
+ const s=getAISettings(), errors=[];
+ if(!s.keys || !s.keys.length) throw new Error('AI設定からGemini APIキーを入力してください。');
+ const models=(s.models&&s.models.length)?s.models:['gemini-3.6-flash'];
+ for(const key of s.keys){
+   for(const model of models){
+     try{
+       const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+       const res=await fetch(url,{
+         method:'POST',
+         headers:{'Content-Type':'application/json','x-goog-api-key':key},
+         body:JSON.stringify({
+           contents:[{parts:[{text:prompt}]}],
+           generationConfig:{temperature:0.2,responseMimeType:'application/json'}
+         })
+       });
+       const body=await res.json();
+       if(!res.ok) throw new Error(body?.error?.message||('HTTP '+res.status));
+       const text=body?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
+       if(!text) throw new Error('空の応答です');
+       return {text,model};
+     }catch(e){errors.push(model+': '+e.message)}
+   }
+ }
+ throw new Error(errors.slice(-4).join(' / '));
+}
+function findQuestionById(id){
+ return Object.values(window.EXAM_DATA).flat().find(q=>q.id===id) || state.items.find(q=>q.id===id);
+}
+async function generateAIForCurrent(){return generateAIForQuestion(current().id,false)}
+async function generateAIForQuestion(id,fromReview){
+ const q=findQuestionById(id); if(!q)return;
+ const btns=[...document.querySelectorAll('.ai-actions button')]; btns.forEach(b=>{b.disabled=true;b.textContent='生成中…'});
+ const prompt=`あなたは日本の運転免許学科試験の学習補助AIです。
+次の問題について、提供された正解と資料解説を絶対に変更せず、補足学習情報だけを作ってください。
+問題文: ${q.question}
+正解: ${q.answer?'○':'×'}
+資料解説: ${q.sourceExplanation||'設問通り'}
+
+JSONだけで返してください。
+{"supplement":"初心者にも分かる短い補足説明。資料解説と矛盾させない。","memoryTip":"短く覚えやすい覚え方。"}
+法律・数値・標識の意味を推測で追加しないでください。資料から断定できない内容は「資料の範囲では補足なし」としてください。`;
+ try{
+   const r=await callGemini(prompt);
+   let obj;
+   try{obj=JSON.parse(r.text)}catch(e){
+     const m=r.text.match(/\{[\s\S]*\}/); if(!m)throw new Error('JSON形式で解析できませんでした'); obj=JSON.parse(m[0]);
+   }
+   const cache=getAICache();
+   cache[id]={supplement:String(obj.supplement||''),memoryTip:String(obj.memoryTip||''),model:r.model,createdAt:new Date().toISOString()};
+   saveAICache(cache);
+   if(fromReview)renderReview();else renderFeedback(q);
+ }catch(e){
+   alert('AI生成エラー：'+e.message);
+   if(fromReview)renderReview();else renderFeedback(q);
+ }
+}
+
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 $('globalEnd').onclick=()=>{const answered=Object.keys(state.answers).length+(state.draft!==null&&state.answers[current().id]===undefined?1:0),unanswered=state.items.length-answered;$('modalTitle').textContent=state.mode==='exam'?'試験を終了しますか？':'終了しますか？';$('modalText').innerHTML=`回答済み：${answered}問<br>未回答：${unanswered}問`;$('modal').classList.add('show');$('modalOk').onclick=()=>{closeModal();if(state.mode==='random'){goHome()}else finishExam()}}
 function closeModal(){$('modal').classList.remove('show')}
