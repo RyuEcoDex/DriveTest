@@ -160,7 +160,7 @@ function renderQuestion(){
 }
 function renderFigure(q){
  const a=$('figureArea');a.innerHTML='';if(!q.figure)return;
- a.innerHTML=`<div class="figure-note">参照：${q.figure}図　※V1は元ページ画像を表示。個別図切り出しは次工程。</div><div class="figure-wrap"><img src="${q.figureImage}" alt="${q.figure}図を含む元資料" onclick="this.requestFullscreen?.()"></div>`;
+ a.innerHTML=`<div class="figure-note">参照：${q.figure}図　※該当図を含む元資料ページです。画像をタップすると拡大できます。</div><div class="figure-wrap"><img src="${q.figureImage}" alt="${q.figure}図を含む元資料" onclick="this.requestFullscreen?.()"></div>`;
 }
 function renderFeedback(q){
  const a=$('feedbackArea');a.innerHTML='';
